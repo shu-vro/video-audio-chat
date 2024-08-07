@@ -73,19 +73,22 @@ export default function ChatPanel({
                         });
                     }
                 );
-                socket.on("server:somebody_is_leaving", (joiner_name) => {
-                    setAllMessages((prev) => {
-                        let x = [...prev];
-                        x.push({
-                            userId: "",
-                            sender_name: "",
-                            message: `${joiner_name} left the call.`,
-                            time: 0,
-                            type: "info",
+                socket.on(
+                    "server:somebody_is_leaving",
+                    (joiner_name, joiner_id) => {
+                        setAllMessages((prev) => {
+                            let x = [...prev];
+                            x.push({
+                                userId: "",
+                                sender_name: "",
+                                message: `${joiner_name} left the call.`,
+                                time: 0,
+                                type: "info",
+                            });
+                            return x;
                         });
-                        return x;
-                    });
-                });
+                    }
+                );
             }
         }, 1000);
 

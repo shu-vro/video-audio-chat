@@ -1,21 +1,28 @@
 import express from "express";
-import { ExpressPeerServer } from "peer";
+// import { ExpressPeerServer } from "peer";
 const app = express();
 
 import { createServer } from "http";
 import { Server, Socket } from "socket.io";
+import { instrument } from "@socket.io/admin-ui";
 
 const httpServer = createServer(app);
 
 // ---------------- peerJs setup --------------------
-const peerServer = ExpressPeerServer(httpServer, {});
-app.use("/peer_backend", peerServer);
+// const peerServer = ExpressPeerServer(httpServer, {});
+// app.use("/peer_backend", peerServer);
 
 const io = new Server(httpServer, {
     cors: {
-        origin: "*",
+        origin: ["https://admin.socket.io", "http://localhost:3000"],
+        credentials: true,
     },
     // options
+});
+
+instrument(io, {
+    auth: false,
+    mode: "development",
 });
 
 io.on("connection", (socket: Socket) => {
@@ -23,23 +30,17 @@ io.on("connection", (socket: Socket) => {
 
     socket.data.name = "unknown";
 
+    console.log(socket.id);
+
     // someone is requesting to join room
     socket.on("user:join-room", async (roomId, socketId, joiner_name) => {
         socket.join(roomId);
-        const all_sockets = (await io.in(roomId).fetchSockets()).map(
-            (s) => s.id
-        );
 
         socket.data.name = joiner_name;
         console.log(`[server]: ${joiner_name} joining ${roomId}`);
         socket
             .to(roomId)
             .emit("server:someone-joined", roomId, socketId, joiner_name);
-
-        socket.to(roomId).emit(
-            "server:all-sockets",
-            all_sockets.filter((s) => s !== socketId)
-        );
     });
 
     // someone left
@@ -84,7 +85,11 @@ io.on("connection", (socket: Socket) => {
         console.log(`[server]: disconnecting... ${socket.id}`, socket.rooms);
         socket.rooms.forEach((roomId) => {
             if (roomId === socket.id) return;
-            io.to(roomId).emit("server:somebody_is_leaving", socket.data.name);
+            io.to(roomId).emit(
+                "server:somebody_is_leaving",
+                socket.data.name,
+                socket.id
+            );
         });
     });
 });

@@ -14,15 +14,14 @@ import { toast } from "sonner";
 import Peer, { SimplePeer } from "simple-peer";
 import { cn } from "@/lib/utils";
 
-function Video({ peer }: { peer: Peer.Instance }) {
+function Video({ peer }: { peer: { id: string; peer: Peer.Instance } }) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [streamReady, setStreamReady] = useState(false);
 
     useEffect(() => {
-        console.log(peer);
-        peer.on("stream", (stream) => {
+        peer.peer.on("stream", (stream) => {
+            console.log(peer);
             setStreamReady(true);
-            console.log("incoming stream", stream);
             videoRef.current!.srcObject = stream;
             videoRef.current!.autoplay = true;
         });
@@ -58,7 +57,7 @@ export default function VideoPanel({
     sender_name: string;
     roomId: string;
     handleChatBoxPanel: () => void;
-    peers: Peer.Instance[];
+    peers: { id: string; peer: Peer.Instance }[];
     myMediaStream?: MediaStream;
 }) {
     const [videoEnabled, setVideoEnabled] = useState(false);

@@ -47,9 +47,14 @@ export default function Rooms({
         Object.fromEntries(searchParams.entries()).my_name
     );
     const [myMediaStream, setMyMediaStream] = useState<MediaStream>();
-    const socket = io(process.env.NEXT_PUBLIC_SERVER_URL as string);
+    const [socket, setSocket] = useState(
+        io(process.env.NEXT_PUBLIC_SERVER_URL as string)
+    );
+    // const socket = io(process.env.NEXT_PUBLIC_SERVER_URL as string);
 
-    const [peers, setPeers] = useState<Peer.Instance[]>([]);
+    const [peers, setPeers] = useState<{ id: string; peer: Peer.Instance }[]>(
+        []
+    );
 
     const handleDisconnect = () => {
         if (!socket.connected) return;
@@ -77,15 +82,13 @@ export default function Rooms({
             setMy_name_state(getName);
         }
 
-        // @ts-ignore
-        // const AdapterJs = await import("adapterjs");
-
         socket.on("connect", async () => {
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: true,
                 audio: true,
             });
             setMyMediaStream(stream);
+
             console.log("(client) socket id (useEffect):", socket.id);
 
             AdapterJs.webRTCReady((plugin: any) => {
@@ -93,9 +96,7 @@ export default function Rooms({
                 if (!myHostname) {
                     myHostname = "localhost";
                 }
-
                 socket.emit("user:join-room", roomId, socket.id, my_name_state);
-
                 socket.on(
                     "server:someone-joined",
                     (roomId, remoteId, joiner_name) => {
@@ -106,7 +107,6 @@ export default function Rooms({
                                 onClick: () => null,
                             },
                         });
-
                         // everyone will now create a peer connection to remoteId
                         // lets talk of individuals
                         const peer = new Peer({
@@ -114,7 +114,7 @@ export default function Rooms({
                             initiator: true,
                             stream: stream,
                         });
-                        setPeers((p) => [...p, peer]);
+                        setPeers((p) => [...p, { id: remoteId, peer }]);
                         // tell remoteId that I wanna connect, here is my signal data
                         peer.on("signal", (signal) => {
                             // console.log(
@@ -127,14 +127,22 @@ export default function Rooms({
                                 callerId: socket.id,
                             });
                         });
-
                         socket.on("receiving returned signal", ({ signal }) => {
                             console.log("got the final signal.", signal);
                             peer.signal(signal);
                         });
+
+                        peer.on("close", () => {
+                            console.log("peer connection closed!", peer);
+                        });
+                        peer.on("end", () => {
+                            console.log("peer connection end!", peer);
+                        });
+                        peer.on("error", (e) => {
+                            console.log("peer connection error!", peer, e);
+                        });
                     }
                 );
-
                 socket.on("new user responded", ({ signal, callerId }) => {
                     // console.log(
                     //     `received signal from veteran ${callerId}`,
@@ -147,9 +155,8 @@ export default function Rooms({
                         // initiator: true,
                         stream: stream,
                     });
-                    setPeers((p) => [...p, peer]);
+                    setPeers((p) => [...p, { id: callerId, peer }]);
                     peer.signal(signal);
-
                     // tell the new peer that I wanna connect
                     peer.on("signal", (signal) => {
                         // console.log("accepting call");
@@ -159,17 +166,38 @@ export default function Rooms({
                             // receiverId: socket.id,
                         });
                     });
-                });
-
-                socket.on("server:somebody_is_leaving", (joiner_name) => {
-                    toast(`${joiner_name} left the call.`, {
-                        description: new Date().toString(),
-                        action: {
-                            label: "Fine",
-                            onClick: () => null,
-                        },
+                    peer.on("close", () => {
+                        console.log("peer connection closed!", peer);
+                    });
+                    peer.on("end", () => {
+                        console.log("peer connection end!", peer);
+                    });
+                    peer.on("error", (e) => {
+                        console.log("peer connection error!", peer, e);
                     });
                 });
+                socket.on(
+                    "server:somebody_is_leaving",
+                    (joiner_name, joiner_id) => {
+                        toast(`${joiner_name} left the call.`, {
+                            description: new Date().toString(),
+                            action: {
+                                label: "Fine",
+                                onClick: () => null,
+                            },
+                        });
+
+                        setPeers((prev) => {
+                            return prev.filter((p) => {
+                                if (p.id === joiner_id) {
+                                    p.peer.destroy();
+                                    return false;
+                                }
+                                return true;
+                            });
+                        });
+                    }
+                );
             });
         });
 

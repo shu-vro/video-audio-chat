@@ -12,6 +12,7 @@
     "author": "",
     "license": "ISC",
     "dependencies": {
+        "@socket.io/admin-ui": "^0.5.1",
         "express": "^4.18.2",
         "peer": "^1.0.2",
         "socket.io": "^4.7.2",
