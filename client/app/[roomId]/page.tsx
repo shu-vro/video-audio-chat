@@ -52,9 +52,7 @@ export default function Rooms({
     );
     // const socket = io(process.env.NEXT_PUBLIC_SERVER_URL as string);
 
-    const [peers, setPeers] = useState<{ id: string; peer: Peer.Instance }[]>(
-        []
-    );
+    const [peers, setPeers] = useState<PeerType[]>([]);
 
     const handleDisconnect = () => {
         if (!socket.connected) return;
@@ -114,7 +112,10 @@ export default function Rooms({
                             initiator: true,
                             stream: stream,
                         });
-                        setPeers((p) => [...p, { id: remoteId, peer }]);
+                        setPeers((p) => [
+                            ...p,
+                            { id: remoteId, name: joiner_name, peer },
+                        ]);
                         // tell remoteId that I wanna connect, here is my signal data
                         peer.on("signal", (signal) => {
                             // console.log(
@@ -143,39 +144,45 @@ export default function Rooms({
                         });
                     }
                 );
-                socket.on("new user responded", ({ signal, callerId }) => {
-                    // console.log(
-                    //     `received signal from veteran ${callerId}`,
-                    //     signal
-                    // );
-                    // we found that somebody created a peer
-                    // and now contacting us - a room member
-                    const peer = new Peer({
-                        config: configuration(myHostname),
-                        // initiator: true,
-                        stream: stream,
-                    });
-                    setPeers((p) => [...p, { id: callerId, peer }]);
-                    peer.signal(signal);
-                    // tell the new peer that I wanna connect
-                    peer.on("signal", (signal) => {
-                        // console.log("accepting call");
-                        socket.emit("returning signal", {
-                            signal,
-                            to: callerId,
-                            // receiverId: socket.id,
+                socket.on(
+                    "new user responded",
+                    ({ signal, callerId, callerName }) => {
+                        // console.log(
+                        //     `received signal from veteran ${callerId}`,
+                        //     signal
+                        // );
+                        // we found that somebody created a peer
+                        // and now contacting us - a room member
+                        const peer = new Peer({
+                            config: configuration(myHostname),
+                            // initiator: true,
+                            stream: stream,
                         });
-                    });
-                    peer.on("close", () => {
-                        console.log("peer connection closed!", peer);
-                    });
-                    peer.on("end", () => {
-                        console.log("peer connection end!", peer);
-                    });
-                    peer.on("error", (e) => {
-                        console.log("peer connection error!", peer, e);
-                    });
-                });
+                        setPeers((p) => [
+                            ...p,
+                            { id: callerId, name: callerName, peer },
+                        ]);
+                        peer.signal(signal);
+                        // tell the new peer that I wanna connect
+                        peer.on("signal", (signal) => {
+                            // console.log("accepting call");
+                            socket.emit("returning signal", {
+                                signal,
+                                to: callerId,
+                                // receiverId: socket.id,
+                            });
+                        });
+                        peer.on("close", () => {
+                            console.log("peer connection closed!", peer);
+                        });
+                        peer.on("end", () => {
+                            console.log("peer connection end!", peer);
+                        });
+                        peer.on("error", (e) => {
+                            console.log("peer connection error!", peer, e);
+                        });
+                    }
+                );
                 socket.on(
                     "server:somebody_is_leaving",
                     (joiner_name, joiner_id) => {
@@ -222,18 +229,23 @@ export default function Rooms({
         }
     };
 
+    const onRoomExit = () => {
+        handleDisconnect();
+        router.push("/");
+    };
+
     return (
         <ResizablePanelGroup
             direction="horizontal"
             className="min-h-[calc(100vh-4rem)] w-full rounded-lg border-2">
             <ResizablePanel defaultSize={100}>
                 <VideoPanel
-                    socket={socket}
                     sender_name={my_name_state}
                     roomId={roomId}
                     handleChatBoxPanel={handleChatBoxPanel}
                     peers={peers}
                     myMediaStream={myMediaStream}
+                    onRoomExit={onRoomExit}
                 />
             </ResizablePanel>
             <ResizableHandle withHandle />

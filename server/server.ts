@@ -69,6 +69,7 @@ io.on("connection", (socket: Socket) => {
         io.to(payload.to).emit("new user responded", {
             signal: payload.signal,
             callerId: payload.callerId,
+            callerName: socket.data.name,
         });
     });
     socket.on("returning signal", (payload) => {
@@ -108,27 +109,3 @@ const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
     console.log(`http server running on http://localhost:${PORT}`);
 });
-
-/*
-io.on("connection", (socket) => {
-    console.log(`       ----------- connected: ${socket.id} -----------`);
-    let allSockets;
-    socket.on("join-room", async (ROOM_ID) => {
-        let roomExists = io.sockets.adapter.rooms.get(ROOM_ID);
-        socket.join(ROOM_ID);
-        socket.in(ROOM_ID).emit("user-joined", socket.id);
-        allSockets = Array.from((await io.in(ROOM_ID).allSockets()).keys());
-        socket.to(allSockets[0]).emit("member-joined", socket.id);
-        if (!roomExists) {
-            console.log(`room: ${ROOM_ID}   -----   admin: ${socket.id}`);
-            socket.to(socket.id).emit("room-admin");
-        }
-    });
-
-    socket.on("disconnect", () => {
-        console.log(
-            `       ----------- disconnected: ${socket.id} -----------`
-        );
-    });
-});
-*/
