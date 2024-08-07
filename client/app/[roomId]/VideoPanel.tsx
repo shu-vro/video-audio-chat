@@ -11,43 +11,70 @@ import Link from "next/link";
 import { Socket } from "socket.io-client";
 import { SocketEvents } from "./ChatPanel";
 import { toast } from "sonner";
-import Peer from "peerjs";
+import Peer, { SimplePeer } from "simple-peer";
 import { cn } from "@/lib/utils";
-// @ts-ignore
-import AdapterJs from "adapterjs";
+
+function Video({ peer }: { peer: Peer.Instance }) {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const [streamReady, setStreamReady] = useState(false);
+
+    useEffect(() => {
+        console.log(peer);
+        peer.on("stream", (stream) => {
+            setStreamReady(true);
+            console.log("incoming stream", stream);
+            videoRef.current!.srcObject = stream;
+            videoRef.current!.autoplay = true;
+        });
+    }, []);
+    return (
+        <div
+            className={cn(
+                "w-[calc(50%-12px)] h-1/2 border-cyan-400 border border-solid",
+                {
+                    hidden: !streamReady,
+                }
+            )}>
+            <video
+                src=""
+                className="w-full h-full"
+                style={{
+                    transform: "rotateY(180deg)",
+                }}
+                ref={videoRef}></video>
+        </div>
+    );
+}
 
 export default function VideoPanel({
     socket,
     sender_name,
     roomId,
     handleChatBoxPanel,
+    peers,
+    myMediaStream,
 }: {
     socket: Socket<SocketEvents, SocketEvents>;
     sender_name: string;
     roomId: string;
     handleChatBoxPanel: () => void;
+    peers: Peer.Instance[];
+    myMediaStream?: MediaStream;
 }) {
-    const [myMediaStream, setMyMediaStream] = useState<MediaStream>();
     const [videoEnabled, setVideoEnabled] = useState(false);
     const [audioEnabled, setAudioEnabled] = useState(false);
-    const [peerConnection, setPeerConnection] = useState<RTCPeerConnection>();
     const my_video_ref = useRef<HTMLVideoElement>(null);
-    const second_video_ref = useRef<HTMLVideoElement>(null);
+
+    const handleDisconnect = () => {
+        if (!socket.connected) return;
+        console.log(`[client] disconnecting...`);
+        socket.emit("user:user_disconnecting", roomId);
+        socket.disconnect();
+    };
+
     useEffect(() => {
         (async () => {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: true,
-                    audio: true,
-                });
-
-                setMyMediaStream(stream);
-                if (stream.getVideoTracks()[0].enabled) {
-                    setVideoEnabled(true);
-                }
-                if (stream.getAudioTracks()[0].enabled) {
-                    setAudioEnabled(true);
-                }
                 const timeout = setInterval(async () => {
                     if (socket.connected) {
                         toast(`Video panel ready to go`, {
@@ -56,29 +83,6 @@ export default function VideoPanel({
                                 onClick: () => null,
                             },
                         });
-
-                        // @ts-ignore
-                        const AdapterJs = await import("adapterjs");
-
-                        AdapterJs.webRTCReady((plugin: any) => {
-                            var myHostname = window.location.hostname;
-                            if (!myHostname) {
-                                myHostname = "localhost";
-                            }
-                            setPeerConnection(
-                                new RTCPeerConnection({
-                                    iceServers: [
-                                        // Information about ICE servers - Use your own!
-                                        {
-                                            urls: "turn:" + myHostname, // A TURN server
-                                            username: "webrtc",
-                                            credential: "turnserver",
-                                        },
-                                    ],
-                                })
-                            );
-                        });
-
                         clearInterval(timeout);
                     }
                 }, 1000);
@@ -92,79 +96,11 @@ export default function VideoPanel({
                 console.log(error);
             }
         })();
+        return () => {
+            // handleDisconnect();
+        };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
-
-    useEffect(() => {
-        (async () => {
-            if (peerConnection) {
-                myMediaStream!.getTracks().forEach((track) => {
-                    peerConnection.addTrack(track, myMediaStream!);
-                });
-
-                peerConnection.ontrack = (event) => {
-                    console.log("ontrack event: ", event);
-                    second_video_ref.current!.srcObject = event.streams[0];
-                    second_video_ref.current!.play();
-                };
-
-                peerConnection.onicecandidate = (event) => {
-                    if (event.candidate) {
-                        socket.emit(
-                            "client:rtc-candidate",
-                            event.candidate,
-                            roomId
-                        );
-                    }
-                };
-
-                socket.on(
-                    "server:rtc-candidate",
-                    async (candidate, senderId) => {
-                        console.log("candidate found", senderId);
-                        try {
-                            await peerConnection.addIceCandidate(
-                                new RTCIceCandidate(candidate)
-                            );
-                        } catch (e) {
-                            console.error(
-                                "Error adding received ice candidate",
-                                e
-                            );
-                        }
-                    }
-                );
-
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-
-                socket.emit("client:rtc-offer", offer, roomId);
-
-                socket.on("server:rtc-offer", async (offer, senderId) => {
-                    await peerConnection.setRemoteDescription(
-                        new RTCSessionDescription(offer)
-                    );
-
-                    const answer = await peerConnection.createAnswer();
-                    await peerConnection.setLocalDescription(answer);
-
-                    socket.emit("client:rtc-answer", answer, roomId);
-                });
-                socket.on("server:rtc-answer", async (answer, senderId) => {
-                    console.log("call answered");
-
-                    await peerConnection.setRemoteDescription(
-                        new RTCSessionDescription(answer)
-                    );
-                });
-
-                peerConnection.onconnectionstatechange = (event) => {
-                    console.log(peerConnection.connectionState);
-                };
-            }
-        })();
-        return () => {};
-    }, [peerConnection]);
 
     useEffect(() => {
         if (!my_video_ref.current || !myMediaStream) return;
@@ -175,6 +111,13 @@ export default function VideoPanel({
             if (!video) return;
             video.play();
         });
+
+        if (myMediaStream.getVideoTracks()[0].enabled) {
+            setVideoEnabled(true);
+        }
+        if (myMediaStream.getAudioTracks()[0].enabled) {
+            setAudioEnabled(true);
+        }
 
         return () => {
             if (myMediaStream) {
@@ -197,27 +140,9 @@ export default function VideoPanel({
                         }}
                         ref={my_video_ref}></video>
                 </div>
-                <div className="w-[calc(50%-12px)] h-1/2 border-cyan-400 border border-solid">
-                    <video
-                        src=""
-                        className="w-full h-full"
-                        style={{
-                            transform: "rotateY(180deg)",
-                        }}
-                        ref={second_video_ref}></video>
-                </div>
-                {/* {Array(2)
-                    .fill("")
-                    .map((_, i) => (
-                        <div
-                            className="w-[calc(50%-12px)] h-1/2 border-cyan-400 border border-solid"
-                            key={i}>
-                            <video
-                                src="https://www.pexels.com/download/video/1536322/"
-                                controls
-                                className="w-full h-full"></video>
-                        </div>
-                    ))} */}
+                {peers.map((peer, i) => (
+                    <Video key={i} peer={peer} />
+                ))}
             </div>
             <div className="h-16 w-full grid place-items-center">
                 <div className="bg-neutral-400 dark:bg-neutral-500 flex gap-4 rounded-full">

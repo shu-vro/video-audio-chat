@@ -6,7 +6,7 @@ import {
     ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import ChatPanel from "./ChatPanel";
-import VideoPanel from "./VideoPanel1v1";
+import VideoPanel from "./VideoPanel";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";

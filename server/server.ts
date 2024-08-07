@@ -65,16 +65,6 @@ io.on("connection", (socket: Socket) => {
         }
     );
 
-    socket.on("client:rtc-offer", (offer, room_name) => {
-        socket.to(room_name).emit("server:rtc-offer", offer, socket.id);
-    });
-    socket.on("client:rtc-candidate", (candidate, room_name) => {
-        socket.to(room_name).emit("server:rtc-candidate", candidate, socket.id);
-    });
-    socket.on("client:rtc-answer", (answer, room_name) => {
-        socket.to(room_name).emit("server:rtc-answer", answer, socket.id);
-    });
-
     socket.on("sending signal", (payload) => {
         // payload.to => the new user
         io.to(payload.to).emit("new user responded", {
