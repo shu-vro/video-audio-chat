@@ -54,7 +54,7 @@ export default function Rooms({
 
     const [peers, setPeers] = useState<PeerType[]>([]);
 
-    const handleDisconnect = () => {
+    const handleDisconnect = (cb = () => {}) => {
         if (!socket.connected) return;
         toast(`The call is over`, {
             description:
@@ -69,6 +69,7 @@ export default function Rooms({
         console.log(`[client] disconnecting...`);
         socket.emit("user:user_disconnecting", roomId);
         socket.disconnect();
+        cb();
     };
 
     useEffect(() => {
@@ -230,8 +231,7 @@ export default function Rooms({
     };
 
     const onRoomExit = () => {
-        handleDisconnect();
-        router.push("/");
+        handleDisconnect(() => router.push("/"));
     };
 
     return (

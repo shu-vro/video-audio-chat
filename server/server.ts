@@ -8,6 +8,11 @@ import { instrument } from "@socket.io/admin-ui";
 
 const httpServer = createServer(app);
 
+const _printFn = console.log;
+console.log = function (...args: any) {
+    _printFn(`[server]:[${new Date().toLocaleTimeString()}]:`, ...args);
+};
+
 // ---------------- peerJs setup --------------------
 // const peerServer = ExpressPeerServer(httpServer, {});
 // app.use("/peer_backend", peerServer);
@@ -26,7 +31,7 @@ instrument(io, {
 });
 
 io.on("connection", (socket: Socket) => {
-    console.log("[server]: new connection: ", socket.id);
+    // console.log("new connection: ", socket.id);
 
     socket.data.name = "unknown";
 
@@ -35,7 +40,7 @@ io.on("connection", (socket: Socket) => {
         socket.join(roomId);
 
         socket.data.name = joiner_name;
-        console.log(`[server]: ${joiner_name} joining ${roomId}`);
+        // console.log(`${joiner_name} joining ${roomId}`);
         socket
             .to(roomId)
             .emit("server:someone-joined", roomId, socketId, joiner_name);
@@ -43,16 +48,16 @@ io.on("connection", (socket: Socket) => {
 
     // someone left
     socket.on("user:user_disconnecting", (roomId) => {
+        const id = socket.id;
         socket.leave(roomId);
-        console.log(`[server]: ${socket.data.name} left ${roomId}`);
-        socket.emit("server:somebody_is_leaving", socket.data.name);
+        console.log(`${socket.data.name} left ${roomId}`);
+        io.to(roomId).emit("server:somebody_is_leaving", socket.data.name, id);
     });
 
     // someone sending a message.
     socket.on(
         "user:message_sent_to_room",
         (roomId, userId, sender_name, message, type, time) => {
-            console.log(message);
             io.to(roomId).emit(
                 "server:send_message_to_everyone",
                 userId,
@@ -81,7 +86,7 @@ io.on("connection", (socket: Socket) => {
 
     // when user is disconnected
     socket.on("disconnecting", () => {
-        console.log(`[server]: disconnecting ${socket.id}`);
+        console.log(`disconnecting ${socket.id}`);
         socket.rooms.forEach((roomId) => {
             if (roomId === socket.id) return;
             io.to(roomId).emit(
@@ -97,7 +102,7 @@ async function closeSocketsNotInRoom() {
     const sockets = await io.fetchSockets();
     sockets.forEach((socket) => {
         if (socket.rooms.size <= 1) {
-            console.log(`[server]: closing socket ${socket.id} not in a room`);
+            // console.log(`closing socket ${socket.id} not in a room`);
             socket.disconnect(true);
         }
     });
