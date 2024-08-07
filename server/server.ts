@@ -30,8 +30,6 @@ io.on("connection", (socket: Socket) => {
 
     socket.data.name = "unknown";
 
-    console.log(socket.id);
-
     // someone is requesting to join room
     socket.on("user:join-room", async (roomId, socketId, joiner_name) => {
         socket.join(roomId);
@@ -82,7 +80,7 @@ io.on("connection", (socket: Socket) => {
 
     // when user is disconnected
     socket.on("disconnecting", () => {
-        console.log(`[server]: disconnecting... ${socket.id}`, socket.rooms);
+        console.log(`[server]: disconnecting ${socket.id}`);
         socket.rooms.forEach((roomId) => {
             if (roomId === socket.id) return;
             io.to(roomId).emit(
@@ -93,6 +91,18 @@ io.on("connection", (socket: Socket) => {
         });
     });
 });
+
+async function closeSocketsNotInRoom() {
+    const sockets = await io.fetchSockets();
+    sockets.forEach((socket) => {
+        if (socket.rooms.size <= 1) {
+            console.log(`[server]: closing socket ${socket.id} not in a room`);
+            socket.disconnect(true);
+        }
+    });
+}
+
+setInterval(closeSocketsNotInRoom, 1000 * 20);
 
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
