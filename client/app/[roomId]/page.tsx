@@ -170,18 +170,6 @@ export default function Rooms({
                         },
                     });
                 });
-                // setPeerConnection(
-                //     new RTCPeerConnection({
-                //         iceServers: [
-                //             // Information about ICE servers - Use your own!
-                //             {
-                //                 urls: "turn:" + myHostname, // A TURN server
-                //                 username: "webrtc",
-                //                 credential: "turnserver",
-                //             },
-                //         ],
-                //     })
-                // );
             });
         });
 
@@ -205,8 +193,6 @@ export default function Rooms({
             panel.current.resize(regain_value);
         }
     };
-
-    // console.log(peers.map((peer) => peer.channelName));
 
     return (
         <ResizablePanelGroup

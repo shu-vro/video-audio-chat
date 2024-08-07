@@ -14,19 +14,6 @@ import { toast } from "sonner";
 import Peer, { SimplePeer } from "simple-peer";
 import { cn } from "@/lib/utils";
 
-// const configuration = (myHostname: string) => {
-//     return {
-//         iceServers: [
-//             // Information about ICE servers - Use your own!
-//             {
-//                 urls: "turn:" + myHostname, // A TURN server
-//                 username: "webrtc",
-//                 credential: "turnserver",
-//             },
-//         ],
-//     };
-// };
-
 function Video({ peer }: { peer: Peer.Instance }) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [streamReady, setStreamReady] = useState(false);
@@ -74,12 +61,9 @@ export default function VideoPanel({
     peers: Peer.Instance[];
     myMediaStream?: MediaStream;
 }) {
-    // const [myMediaStream, setMyMediaStream] = useState<MediaStream>();
     const [videoEnabled, setVideoEnabled] = useState(false);
     const [audioEnabled, setAudioEnabled] = useState(false);
-    const [peerConnection, setPeerConnection] = useState<RTCPeerConnection>();
     const my_video_ref = useRef<HTMLVideoElement>(null);
-    const second_video_ref = useRef<HTMLVideoElement>(null);
 
     const handleDisconnect = () => {
         if (!socket.connected) return;
@@ -91,18 +75,6 @@ export default function VideoPanel({
     useEffect(() => {
         (async () => {
             try {
-                // const stream = await navigator.mediaDevices.getUserMedia({
-                //     video: true,
-                //     audio: true,
-                // });
-
-                // setMyMediaStream(stream);
-                // if (stream.getVideoTracks()[0].enabled) {
-                //     setVideoEnabled(true);
-                // }
-                // if (stream.getAudioTracks()[0].enabled) {
-                //     setAudioEnabled(true);
-                // }
                 const timeout = setInterval(async () => {
                     if (socket.connected) {
                         toast(`Video panel ready to go`, {
@@ -111,88 +83,6 @@ export default function VideoPanel({
                                 onClick: () => null,
                             },
                         });
-
-                        // // @ts-ignore
-                        // const AdapterJs = await import("adapterjs");
-
-                        // AdapterJs.webRTCReady((plugin: any) => {
-                        //     var myHostname = window.location.hostname;
-                        //     if (!myHostname) {
-                        //         myHostname = "localhost";
-                        //     }
-
-                        //     socket.on(
-                        //         "server:someone-joined",
-                        //         (roomId, remoteId, joiner_name) => {
-                        //             // everyone will now create a peer connection to remoteId
-                        //             // lets talk of individuals
-                        //             const peer = new Peer({
-                        //                 config: configuration(myHostname),
-                        //                 initiator: true,
-                        //                 stream: myMediaStream,
-                        //             });
-                        //             peers.current.push(peer);
-                        //             // tell remoteId that I wanna connect, here is my signal data
-                        //             peer.on("signal", (signal) => {
-                        //                 socket.emit("sending signal", {
-                        //                     to: remoteId,
-                        //                     signal,
-                        //                     callerId: socket.id,
-                        //                 });
-                        //             });
-
-                        //             socket.on(
-                        //                 "receiving returned signal",
-                        //                 ({ signal }) => {
-                        //                     console.log(signal);
-                        //                     peer.signal(signal);
-                        //                 }
-                        //             );
-                        //         }
-                        //     );
-
-                        //     socket.on(
-                        //         "new user responded",
-                        //         ({ signal, callerId }) => {
-                        //             console.log(
-                        //                 "new user responded",
-                        //                 signal,
-                        //                 callerId
-                        //             );
-                        //             // we found that somebody created a peer
-                        //             // and now contacting us - a room member
-                        //             const peer = new Peer({
-                        //                 config: configuration(myHostname),
-                        //                 // initiator: true,
-                        //                 stream: myMediaStream,
-                        //             });
-                        //             peers.current.push(peer);
-                        //             peer.signal(signal);
-
-                        //             // tell the new peer that I wanna connect
-                        //             peer.on("signal", (signal) => {
-                        //                 socket.emit("returning signal", {
-                        //                     signal,
-                        //                     to: callerId,
-                        //                     // receiverId: socket.id,
-                        //                 });
-                        //             });
-                        //         }
-                        //     );
-                        //     // setPeerConnection(
-                        //     //     new RTCPeerConnection({
-                        //     //         iceServers: [
-                        //     //             // Information about ICE servers - Use your own!
-                        //     //             {
-                        //     //                 urls: "turn:" + myHostname, // A TURN server
-                        //     //                 username: "webrtc",
-                        //     //                 credential: "turnserver",
-                        //     //             },
-                        //     //         ],
-                        //     //     })
-                        //     // );
-                        // });
-
                         clearInterval(timeout);
                     }
                 }, 1000);
@@ -253,18 +143,6 @@ export default function VideoPanel({
                 {peers.map((peer, i) => (
                     <Video key={i} peer={peer} />
                 ))}
-                {/* {Array(2)
-                    .fill("")
-                    .map((_, i) => (
-                        <div
-                            className="w-[calc(50%-12px)] h-1/2 border-cyan-400 border border-solid"
-                            key={i}>
-                            <video
-                                src="https://www.pexels.com/download/video/1536322/"
-                                controls
-                                className="w-full h-full"></video>
-                        </div>
-                    ))} */}
             </div>
             <div className="h-16 w-full grid place-items-center">
                 <div className="bg-neutral-400 dark:bg-neutral-500 flex gap-4 rounded-full">
