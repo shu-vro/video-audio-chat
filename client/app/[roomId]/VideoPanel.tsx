@@ -15,11 +15,11 @@ function Video({ peer }: { peer: PeerType }) {
     const [streamReady, setStreamReady] = useState(false);
 
     useEffect(() => {
-        peer.peer.on("stream", (stream) => {
+        peer.peer.ontrack = (event) => {
             setStreamReady(true);
-            videoRef.current!.srcObject = stream;
+            videoRef.current!.srcObject = event.streams[0];
             videoRef.current!.autoplay = true;
-        });
+        };
     }, []);
     return (
         <div
