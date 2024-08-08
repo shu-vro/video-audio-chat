@@ -7,24 +7,15 @@ import { MdCallEnd } from "react-icons/md";
 import { FaMicrophoneAlt } from "react-icons/fa";
 import { BsChatSquareDotsFill } from "react-icons/bs";
 import { HiUserAdd } from "react-icons/hi";
-import Link from "next/link";
-import { Socket } from "socket.io-client";
-import { SocketEvents } from "./ChatPanel";
-import { toast } from "sonner";
-import Peer, { SimplePeer } from "simple-peer";
 import { cn } from "@/lib/utils";
+import { PeerType } from "@/types/peer-types";
 
-function Video({
-    peer,
-}: {
-    peer: { id: string; name: string; peer: Peer.Instance };
-}) {
+function Video({ peer }: { peer: PeerType }) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [streamReady, setStreamReady] = useState(false);
 
     useEffect(() => {
         peer.peer.on("stream", (stream) => {
-            console.log(peer);
             setStreamReady(true);
             videoRef.current!.srcObject = stream;
             videoRef.current!.autoplay = true;
@@ -32,6 +23,7 @@ function Video({
     }, []);
     return (
         <div
+            id={peer.uniqueId}
             className={cn(
                 "relative w-[calc(50%-12px)] h-1/2 border-cyan-400 border border-solid",
                 {
@@ -69,7 +61,7 @@ export default function VideoPanel({
     sender_name: string;
     roomId: string;
     handleChatBoxPanel: () => void;
-    peers: { id: string; name: string; peer: Peer.Instance }[];
+    peers: PeerType[];
     myMediaStream?: MediaStream;
     onRoomExit: () => void;
 }) {

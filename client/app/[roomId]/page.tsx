@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import Peer from "simple-peer";
 // @ts-ignore
 import AdapterJs from "adapterjs";
+import { PeerType } from "@/types/peer-types";
 
 const configuration = (myHostname: string) => {
     return {
@@ -72,6 +73,33 @@ export default function Rooms({
         cb();
     };
 
+    const destroyPeer = (destroyId: string) => {
+        setPeers((prev) => {
+            return prev.filter((p) => {
+                if (p.id === destroyId) {
+                    console.log("destroying peer", p);
+                    p.peer.destroy();
+                    return false;
+                }
+                return true;
+            });
+        });
+    };
+
+    const createPeer = (id: string, name: string, peer: Peer.Instance) => {
+        setPeers((p) => [
+            ...p,
+            {
+                id,
+                name,
+                peer,
+                uniqueId: window.crypto
+                    .getRandomValues(new Uint32Array(1))[0]
+                    .toString(),
+            },
+        ]);
+    };
+
     useEffect(() => {
         while (!my_name_state) {
             let getName = prompt("Write your name before joining") as string;
@@ -83,7 +111,10 @@ export default function Rooms({
 
         socket.on("connect", async () => {
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: true,
+                video: {
+                    width: 640,
+                    height: 480,
+                },
                 audio: true,
             });
             setMyMediaStream(stream);
@@ -113,10 +144,17 @@ export default function Rooms({
                             initiator: true,
                             stream: stream,
                         });
-                        setPeers((p) => [
-                            ...p,
-                            { id: remoteId, name: joiner_name, peer },
-                        ]);
+
+                        createPeer(remoteId, joiner_name, peer);
+
+                        // get ready for call tells the remoteId that I am ready for calling.
+                        // so make a peer and wait until I send the signal.
+                        socket.emit(
+                            "get ready for call",
+                            remoteId,
+                            socket.id,
+                            my_name_state
+                        );
                         // tell remoteId that I wanna connect, here is my signal data
                         peer.on("signal", (signal) => {
                             // console.log(
@@ -130,60 +168,62 @@ export default function Rooms({
                             });
                         });
                         socket.on("receiving returned signal", ({ signal }) => {
-                            console.log("got the final signal.", signal);
                             peer.signal(signal);
                         });
 
                         peer.on("close", () => {
-                            console.log("peer connection closed!", peer);
+                            destroyPeer(remoteId);
                         });
                         peer.on("end", () => {
-                            console.log("peer connection end!", peer);
+                            destroyPeer(remoteId);
                         });
                         peer.on("error", (e) => {
-                            console.log("peer connection error!", peer, e);
+                            destroyPeer(remoteId);
                         });
                     }
                 );
-                socket.on(
-                    "new user responded",
-                    ({ signal, callerId, callerName }) => {
-                        // console.log(
-                        //     `received signal from veteran ${callerId}`,
-                        //     signal
-                        // );
-                        // we found that somebody created a peer
-                        // and now contacting us - a room member
-                        const peer = new Peer({
-                            config: configuration(myHostname),
-                            // initiator: true,
-                            stream: stream,
-                        });
-                        setPeers((p) => [
-                            ...p,
-                            { id: callerId, name: callerName, peer },
-                        ]);
-                        peer.signal(signal);
-                        // tell the new peer that I wanna connect
-                        peer.on("signal", (signal) => {
-                            // console.log("accepting call");
-                            socket.emit("returning signal", {
-                                signal,
-                                to: callerId,
-                                // receiverId: socket.id,
+
+                socket.on("create new peer", (callerId, callerName) => {
+                    socket.on(
+                        "new user responded",
+                        ({ signal, callerId, callerName }) => {
+                            const peer = new Peer({
+                                config: configuration(myHostname),
+                                // initiator: true,
+                                stream: stream,
                             });
-                        });
-                        peer.on("close", () => {
-                            console.log("peer connection closed!", peer);
-                        });
-                        peer.on("end", () => {
-                            console.log("peer connection end!", peer);
-                        });
-                        peer.on("error", (e) => {
-                            console.log("peer connection error!", peer, e);
-                        });
-                    }
-                );
+
+                            createPeer(callerId, callerName, peer);
+
+                            peer.on("close", () => {
+                                destroyPeer(callerId);
+                            });
+                            peer.on("end", () => {
+                                destroyPeer(callerId);
+                            });
+                            peer.on("error", (e) => {
+                                destroyPeer(callerId);
+                            });
+                            // console.log(
+                            //     `received signal from veteran ${callerId}`,
+                            //     signal
+                            // );
+                            // we found that somebody created a peer
+                            // and now contacting us - a room member
+
+                            peer.signal(signal);
+                            // tell the new peer that I wanna connect
+                            peer.on("signal", (signal) => {
+                                // console.log("accepting call");
+                                socket.emit("returning signal", {
+                                    signal,
+                                    to: callerId,
+                                    // receiverId: socket.id,
+                                });
+                            });
+                        }
+                    );
+                });
                 socket.on(
                     "server:somebody_is_leaving",
                     (joiner_name, joiner_id) => {
@@ -195,15 +235,7 @@ export default function Rooms({
                             },
                         });
 
-                        setPeers((prev) => {
-                            return prev.filter((p) => {
-                                if (p.id === joiner_id) {
-                                    p.peer.destroy();
-                                    return false;
-                                }
-                                return true;
-                            });
-                        });
+                        destroyPeer(joiner_id);
                     }
                 );
             });
@@ -218,6 +250,7 @@ export default function Rooms({
         };
     }, []);
 
+    console.log(peers);
     const handleChatBoxPanel = () => {
         if (!panel.current) return;
 

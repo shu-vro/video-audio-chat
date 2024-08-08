@@ -77,6 +77,10 @@ io.on("connection", (socket: Socket) => {
             callerName: socket.data.name,
         });
     });
+    socket.on("get ready for call", (remoteId, callerId, callerName) => {
+        // payload.to => the new user
+        io.to(remoteId).emit("create new peer", callerId, callerName);
+    });
     socket.on("returning signal", (payload) => {
         io.to(payload.to).emit("receiving returned signal", {
             signal: payload.signal,
