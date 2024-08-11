@@ -25,10 +25,8 @@ export default function RootLayout({
                     defaultTheme="system"
                     enableSystem
                     disableTransitionOnChange>
-                    <div className="w-full sticky top-0 left-0 h-16 flex justify-between items-center px-6 bg-cyan-500 text-white dark:bg-[hsl(var(--muted))]">
-                        <h1 className="font-bold">
-                            VIDEO / <span className="opacity-60">CALL</span>
-                        </h1>
+                    <div className="w-full sticky top-0 left-0 h-16 flex justify-between items-center px-6 bg-primary/60 dark:bg-primary">
+                        <h1 className="font-bold">VIDEO / CALL / Chat</h1>
                         <ModeToggle />
                     </div>
                     {children}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
+import { Button, ButtonProps } from "@/components/ui/button";
 import React, { useEffect, useRef, useState } from "react";
 import { FaVideo, FaVideoSlash, FaMicrophoneLinesSlash } from "react-icons/fa6";
 import { MdCallEnd } from "react-icons/md";
@@ -9,6 +9,7 @@ import { BsChatSquareDotsFill } from "react-icons/bs";
 import { HiUserAdd } from "react-icons/hi";
 import { cn } from "@/lib/utils";
 import { PeerType } from "@/types/peer-types";
+import InviteButton from "./InviteButton";
 
 function Video({ peer }: { peer: PeerType }) {
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -25,7 +26,7 @@ function Video({ peer }: { peer: PeerType }) {
         <div
             id={peer.uniqueId}
             className={cn(
-                "relative w-[calc(50%-12px)] h-1/2 border-cyan-400 border border-solid",
+                "relative w-[calc(50%-12px)] h-1/2 border-border border border-solid",
                 {
                     hidden: !streamReady,
                 }
@@ -98,7 +99,7 @@ export default function VideoPanel({
     return (
         <div className="flex flex-col gap-5 h-[calc(100vh-5rem)]">
             <div className="flex justify-center items-center h-[calc(100%-4rem)] w-full gap-3 flex-wrap">
-                <div className="relative w-[calc(50%-12px)] h-1/2 border-cyan-400 border border-solid">
+                <div className="relative w-[calc(50%-12px)] h-1/2 border-border border border-solid">
                     <video
                         src=""
                         className="w-full h-full"
@@ -114,14 +115,14 @@ export default function VideoPanel({
                 ))}
             </div>
             <div className="h-16 w-full grid place-items-center">
-                <div className="bg-neutral-400 dark:bg-neutral-500 flex gap-4 rounded-full px-3 py-1">
-                    <Button
+                <div className="bg-neutral-400/65 dark:bg-neutral-500/65 flex gap-4 rounded-full px-3 py-1">
+                    <ButtonTemplate
                         size="icon"
                         onClick={onRoomExit}
-                        className="rounded-full w-12 h-12 text-xl bg-red-500 text-white hover:bg-red-700">
+                        className="bg-red-500 text-white hover:bg-red-700">
                         <MdCallEnd />
-                    </Button>
-                    <Button
+                    </ButtonTemplate>
+                    <ButtonTemplate
                         onClick={() => {
                             if (myMediaStream) {
                                 if (myMediaStream.getVideoTracks()[0].enabled) {
@@ -135,16 +136,14 @@ export default function VideoPanel({
                                 }
                             }
                         }}
-                        size="icon"
                         className={cn(
-                            "rounded-full w-12 h-12 text-xl",
                             videoEnabled
                                 ? "bg-inherit"
-                                : "bg-red-500 hover:bg-red-700 text-white"
+                                : "bg-red-500 hover:bg-red-700"
                         )}>
                         {videoEnabled ? <FaVideo /> : <FaVideoSlash />}
-                    </Button>
-                    <Button
+                    </ButtonTemplate>
+                    <ButtonTemplate
                         onClick={() => {
                             if (myMediaStream) {
                                 if (myMediaStream.getAudioTracks()[0].enabled) {
@@ -158,32 +157,51 @@ export default function VideoPanel({
                                 }
                             }
                         }}
-                        size="icon"
                         className={cn(
-                            "rounded-full w-12 h-12 text-xl",
                             audioEnabled
                                 ? "bg-inherit"
-                                : "bg-red-500 hover:bg-red-700 text-white"
+                                : "bg-red-500 hover:bg-red-700"
                         )}>
                         {audioEnabled ? (
                             <FaMicrophoneAlt />
                         ) : (
                             <FaMicrophoneLinesSlash />
                         )}
-                    </Button>
-                    <Button
-                        size="icon"
-                        className="rounded-full w-12 h-12 text-xl">
-                        <HiUserAdd />
-                    </Button>
-                    <Button
+                    </ButtonTemplate>
+                    <InviteButton>
+                        <ButtonTemplate>
+                            <HiUserAdd />
+                        </ButtonTemplate>
+                    </InviteButton>
+                    <ButtonTemplate
                         onClick={handleChatBoxPanel}
-                        size="icon"
-                        className="rounded-full w-12 h-12 text-xl">
+                        // className="bg-secondary"
+                    >
                         <BsChatSquareDotsFill />
-                    </Button>
+                    </ButtonTemplate>
                 </div>
             </div>
         </div>
+    );
+}
+
+function ButtonTemplate({
+    children,
+    className,
+    ...rest
+}: {
+    children: React.ReactNode;
+    className?: string;
+} & ButtonProps) {
+    return (
+        <Button
+            size="icon"
+            className={cn(
+                "rounded-full w-12 h-12 text-xl text-white bg-inherit",
+                className
+            )}
+            {...rest}>
+            {children}
+        </Button>
     );
 }
