@@ -14,7 +14,6 @@ import { io } from "socket.io-client";
 import { ImperativePanelHandle } from "react-resizable-panels";
 import useDeviceType from "@/hooks/useDeviceType";
 import { useRouter } from "next/navigation";
-import Peer from "simple-peer";
 // @ts-ignore
 import AdapterJs from "adapterjs";
 import { PeerType } from "@/types/peer-types";
@@ -70,6 +69,10 @@ export default function Rooms({
         console.log(`[client] disconnecting...`);
         socket.emit("user:user_disconnecting", roomId);
         socket.disconnect();
+
+        peers.forEach((p) => {
+            p.peer.close();
+        });
         cb();
     };
 
@@ -78,7 +81,7 @@ export default function Rooms({
             return prev.filter((p) => {
                 if (p.id === destroyId) {
                     console.log("destroying peer", p);
-                    p.peer.destroy();
+                    p.peer.close();
                     return false;
                 }
                 return true;
@@ -86,18 +89,20 @@ export default function Rooms({
         });
     };
 
-    const createPeer = (id: string, name: string, peer: Peer.Instance) => {
+    const createPeer = (id: string, name: string, peer: RTCPeerConnection) => {
+        const uniqueId = window.crypto
+            .getRandomValues(new Uint32Array(1))[0]
+            .toString();
         setPeers((p) => [
             ...p,
             {
                 id,
                 name,
                 peer,
-                uniqueId: window.crypto
-                    .getRandomValues(new Uint32Array(1))[0]
-                    .toString(),
+                uniqueId,
             },
         ]);
+        return uniqueId;
     };
 
     useEffect(() => {
@@ -129,7 +134,7 @@ export default function Rooms({
                 socket.emit("user:join-room", roomId, socket.id, my_name_state);
                 socket.on(
                     "server:someone-joined",
-                    (roomId, remoteId, joiner_name) => {
+                    async (roomId, remoteId, joiner_name) => {
                         toast(`${joiner_name} joined the call`, {
                             description: new Date().toString(),
                             action: {
@@ -137,92 +142,125 @@ export default function Rooms({
                                 onClick: () => null,
                             },
                         });
-                        // everyone will now create a peer connection to remoteId
-                        // lets talk of individuals
-                        const peer = new Peer({
-                            config: configuration(myHostname),
-                            initiator: true,
-                            stream: stream,
+                        const peerConnection = new RTCPeerConnection(
+                            configuration(myHostname)
+                        );
+
+                        createPeer(remoteId, joiner_name, peerConnection);
+
+                        stream.getTracks().forEach((track) => {
+                            peerConnection.addTrack(track, stream);
                         });
 
-                        createPeer(remoteId, joiner_name, peer);
+                        peerConnection.onicecandidate = (event) => {
+                            if (event.candidate) {
+                                socket.emit(
+                                    "candidate",
+                                    event.candidate,
+                                    remoteId,
+                                    socket.id
+                                );
+                            }
+                        };
 
-                        // get ready for call tells the remoteId that I am ready for calling.
-                        // so make a peer and wait until I send the signal.
+                        socket.on("candidate", async (candidate, newUserId) => {
+                            if (newUserId !== remoteId) return;
+                            try {
+                                console.log(candidate);
+                                await peerConnection.addIceCandidate(
+                                    new RTCIceCandidate(candidate)
+                                );
+                            } catch (e) {
+                                console.error(
+                                    "Error adding received ice candidate",
+                                    e
+                                );
+                            }
+                        });
+
+                        const offer = await peerConnection.createOffer();
+                        if (peerConnection.currentLocalDescription) return;
+                        await peerConnection.setLocalDescription(offer);
+
                         socket.emit(
                             "get ready for call",
                             remoteId,
                             socket.id,
                             my_name_state
                         );
-                        // tell remoteId that I wanna connect, here is my signal data
-                        peer.on("signal", (signal) => {
-                            // console.log(
-                            //     `sending ${remoteId} a signal with event`,
-                            //     signal
-                            // );
-                            socket.emit("sending signal", {
-                                to: remoteId,
-                                signal,
-                                callerId: socket.id,
-                            });
-                        });
-                        socket.on("receiving returned signal", ({ signal }) => {
-                            peer.signal(signal);
-                        });
 
-                        peer.on("close", () => {
-                            destroyPeer(remoteId);
-                        });
-                        peer.on("end", () => {
-                            destroyPeer(remoteId);
-                        });
-                        peer.on("error", (e) => {
-                            destroyPeer(remoteId);
+                        console.log("sending offer to ", remoteId);
+
+                        socket.emit("offer", offer, remoteId);
+
+                        socket.on("answer", (answer, newUserId) => {
+                            if (newUserId !== remoteId) return;
+                            console.log("received answer", answer);
+                            if (peerConnection.remoteDescription) return;
+                            peerConnection.setRemoteDescription(answer);
                         });
                     }
                 );
 
                 socket.on("create new peer", (callerId, callerName) => {
-                    socket.on(
-                        "new user responded",
-                        ({ signal, callerId, callerName }) => {
-                            const peer = new Peer({
-                                config: configuration(myHostname),
-                                // initiator: true,
-                                stream: stream,
-                            });
-
-                            createPeer(callerId, callerName, peer);
-
-                            peer.on("close", () => {
-                                destroyPeer(callerId);
-                            });
-                            peer.on("end", () => {
-                                destroyPeer(callerId);
-                            });
-                            peer.on("error", (e) => {
-                                destroyPeer(callerId);
-                            });
-                            // console.log(
-                            //     `received signal from veteran ${callerId}`,
-                            //     signal
-                            // );
-                            // we found that somebody created a peer
-                            // and now contacting us - a room member
-
-                            peer.signal(signal);
-                            // tell the new peer that I wanna connect
-                            peer.on("signal", (signal) => {
-                                // console.log("accepting call");
-                                socket.emit("returning signal", {
-                                    signal,
-                                    to: callerId,
-                                    // receiverId: socket.id,
-                                });
-                            });
-                        }
+                    console.log("new user is joining", callerId, callerName);
+                    const peerConnection = new RTCPeerConnection(
+                        configuration(myHostname)
                     );
+
+                    createPeer(callerId, callerName, peerConnection);
+
+                    stream.getTracks().forEach((track) => {
+                        peerConnection.addTrack(track, stream);
+                    });
+
+                    peerConnection.onicecandidate = (event) => {
+                        if (event.candidate) {
+                            socket.emit(
+                                "candidate",
+                                event.candidate,
+                                callerId,
+                                socket.id
+                            );
+                        }
+                    };
+
+                    socket.on("candidate", async (candidate, newUserId) => {
+                        if (newUserId !== callerId) return;
+                        try {
+                            await peerConnection.addIceCandidate(
+                                new RTCIceCandidate(candidate)
+                            );
+                        } catch (e) {
+                            console.error(
+                                "Error adding received ice candidate",
+                                e
+                            );
+                        }
+                    });
+
+                    socket.on("offer", async (offer, remoteId) => {
+                        if (remoteId !== callerId) return;
+                        console.log(
+                            "gained offer from remoteId",
+                            offer,
+                            remoteId,
+                            callerId
+                        );
+                        if (peerConnection.currentRemoteDescription) return;
+                        peerConnection.setRemoteDescription(offer);
+                        console.log(peerConnection.localDescription);
+                        if (peerConnection.currentLocalDescription) return;
+                        try {
+                            const answer = await peerConnection.createAnswer();
+                            await peerConnection.setLocalDescription(answer);
+
+                            socket.emit("answer", answer, callerId, socket.id);
+                        } catch (error) {
+                            console.log("error", error);
+                            return;
+                        }
+                    });
                 });
                 socket.on(
                     "server:somebody_is_leaving",

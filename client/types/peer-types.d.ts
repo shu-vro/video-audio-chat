@@ -4,5 +4,5 @@ type PeerType = {
     uniqueId: string;
     id: string;
     name: string;
-    peer: Peer.Instance;
+    peer: RTCPeerConnection;
 };

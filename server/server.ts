@@ -69,23 +69,18 @@ io.on("connection", (socket: Socket) => {
         }
     );
 
-    socket.on("sending signal", (payload) => {
-        // payload.to => the new user
-        io.to(payload.to).emit("new user responded", {
-            signal: payload.signal,
-            callerId: payload.callerId,
-            callerName: socket.data.name,
-        });
-    });
     socket.on("get ready for call", (remoteId, callerId, callerName) => {
         // payload.to => the new user
         io.to(remoteId).emit("create new peer", callerId, callerName);
     });
-    socket.on("returning signal", (payload) => {
-        io.to(payload.to).emit("receiving returned signal", {
-            signal: payload.signal,
-            // id: payload.receiverId,
-        });
+    socket.on("offer", (offer, remoteId) => {
+        io.to(remoteId).emit("offer", offer, socket.id);
+    });
+    socket.on("answer", (answer, id, newUserId) => {
+        io.to(id).emit("answer", answer, newUserId);
+    });
+    socket.on("candidate", (candidate, id, newUserId) => {
+        io.to(id).emit("candidate", candidate, newUserId);
     });
 
     // when user is disconnected
