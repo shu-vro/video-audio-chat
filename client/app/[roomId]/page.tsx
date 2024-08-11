@@ -14,7 +14,6 @@ import { io } from "socket.io-client";
 import { ImperativePanelHandle } from "react-resizable-panels";
 import useDeviceType from "@/hooks/useDeviceType";
 import { useRouter } from "next/navigation";
-import Peer from "simple-peer";
 // @ts-ignore
 import AdapterJs from "adapterjs";
 import { PeerType } from "@/types/peer-types";
@@ -70,6 +69,10 @@ export default function Rooms({
         console.log(`[client] disconnecting...`);
         socket.emit("user:user_disconnecting", roomId);
         socket.disconnect();
+
+        peers.forEach((p) => {
+            p.peer.close();
+        });
         cb();
     };
 
@@ -154,12 +157,14 @@ export default function Rooms({
                                 socket.emit(
                                     "candidate",
                                     event.candidate,
-                                    remoteId
+                                    remoteId,
+                                    socket.id
                                 );
                             }
                         };
 
-                        socket.on("candidate", async (candidate) => {
+                        socket.on("candidate", async (candidate, newUserId) => {
+                            if (newUserId !== remoteId) return;
                             try {
                                 console.log(candidate);
                                 await peerConnection.addIceCandidate(
@@ -174,6 +179,7 @@ export default function Rooms({
                         });
 
                         const offer = await peerConnection.createOffer();
+                        if (peerConnection.currentLocalDescription) return;
                         await peerConnection.setLocalDescription(offer);
 
                         socket.emit(
@@ -183,22 +189,24 @@ export default function Rooms({
                             my_name_state
                         );
 
-                        socket.emit("sending offer", offer, remoteId);
+                        console.log("sending offer to ", remoteId);
 
-                        socket.on("answer", (answer) => {
+                        socket.emit("offer", offer, remoteId);
+
+                        socket.on("answer", (answer, newUserId) => {
+                            if (newUserId !== remoteId) return;
                             console.log("received answer", answer);
+                            if (peerConnection.remoteDescription) return;
                             peerConnection.setRemoteDescription(answer);
                         });
                     }
                 );
 
                 socket.on("create new peer", (callerId, callerName) => {
+                    console.log("new user is joining", callerId, callerName);
                     const peerConnection = new RTCPeerConnection(
                         configuration(myHostname)
                     );
-                    peerConnection.ontrack = (event) => {
-                        console.log(event.streams);
-                    };
 
                     createPeer(callerId, callerName, peerConnection);
 
@@ -208,11 +216,17 @@ export default function Rooms({
 
                     peerConnection.onicecandidate = (event) => {
                         if (event.candidate) {
-                            socket.emit("candidate", event.candidate, callerId);
+                            socket.emit(
+                                "candidate",
+                                event.candidate,
+                                callerId,
+                                socket.id
+                            );
                         }
                     };
 
-                    socket.on("candidate", async (candidate) => {
+                    socket.on("candidate", async (candidate, newUserId) => {
+                        if (newUserId !== callerId) return;
                         try {
                             await peerConnection.addIceCandidate(
                                 new RTCIceCandidate(candidate)
@@ -226,16 +240,26 @@ export default function Rooms({
                     });
 
                     socket.on("offer", async (offer, remoteId) => {
+                        if (remoteId !== callerId) return;
                         console.log(
                             "gained offer from remoteId",
                             offer,
-                            remoteId
+                            remoteId,
+                            callerId
                         );
+                        if (peerConnection.currentRemoteDescription) return;
                         peerConnection.setRemoteDescription(offer);
-                        const answer = await peerConnection.createAnswer();
-                        await peerConnection.setLocalDescription(answer);
+                        console.log(peerConnection.localDescription);
+                        if (peerConnection.currentLocalDescription) return;
+                        try {
+                            const answer = await peerConnection.createAnswer();
+                            await peerConnection.setLocalDescription(answer);
 
-                        socket.emit("answer", answer, remoteId);
+                            socket.emit("answer", answer, callerId, socket.id);
+                        } catch (error) {
+                            console.log("error", error);
+                            return;
+                        }
                     });
                 });
                 socket.on(

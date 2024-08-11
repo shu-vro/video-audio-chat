@@ -73,14 +73,14 @@ io.on("connection", (socket: Socket) => {
         // payload.to => the new user
         io.to(remoteId).emit("create new peer", callerId, callerName);
     });
-    socket.on("sending offer", (offer, remoteId) => {
+    socket.on("offer", (offer, remoteId) => {
         io.to(remoteId).emit("offer", offer, socket.id);
     });
-    socket.on("answer", (answer, id) => {
-        io.to(id).emit("answer", answer);
+    socket.on("answer", (answer, id, newUserId) => {
+        io.to(id).emit("answer", answer, newUserId);
     });
-    socket.on("candidate", (candidate, id) => {
-        io.to(id).emit("candidate", candidate);
+    socket.on("candidate", (candidate, id, newUserId) => {
+        io.to(id).emit("candidate", candidate, newUserId);
     });
 
     // when user is disconnected
