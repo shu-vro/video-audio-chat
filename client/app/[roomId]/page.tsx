@@ -132,6 +132,16 @@ export default function Rooms({
                     myHostname = "localhost";
                 }
                 socket.emit("user:join-room", roomId, socket.id, my_name_state);
+
+                socket.on("server:room-full", (roomId) => {
+                    toast(`The room: ${roomId} is full`, {
+                        description: "Please try again later",
+                    });
+                    peers.forEach((p) => {
+                        p.peer.close();
+                    });
+                    router.push("/");
+                });
                 socket.on(
                     "server:someone-joined",
                     async (roomId, remoteId, joiner_name) => {

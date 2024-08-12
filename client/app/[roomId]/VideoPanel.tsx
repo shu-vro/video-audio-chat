@@ -26,7 +26,7 @@ function Video({ peer }: { peer: PeerType }) {
         <div
             id={peer.uniqueId}
             className={cn(
-                "relative w-[calc(50%-12px)] h-1/2 border-border border border-solid",
+                "relative w-[calc(50%-12px)] h-1/2 border border-primary",
                 {
                     hidden: !streamReady,
                 }
@@ -99,7 +99,7 @@ export default function VideoPanel({
     return (
         <div className="flex flex-col gap-5 h-[calc(100vh-5rem)]">
             <div className="flex justify-center items-center h-[calc(100%-4rem)] w-full gap-3 flex-wrap">
-                <div className="relative w-[calc(50%-12px)] h-1/2 border-border border border-solid">
+                <div className="relative w-[calc(50%-12px)] h-1/2 border border-primary">
                     <video
                         src=""
                         className="w-full h-full"

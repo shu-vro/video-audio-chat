@@ -37,6 +37,13 @@ io.on("connection", (socket: Socket) => {
 
     // someone is requesting to join room
     socket.on("user:join-room", async (roomId, socketId, joiner_name) => {
+        const room = io.sockets.adapter.rooms.get(roomId);
+        const membersCount = room ? room.size : 0;
+
+        if (membersCount > 3) {
+            socket.emit("server:room-full", roomId);
+            return;
+        }
         socket.join(roomId);
 
         socket.data.name = joiner_name;
@@ -47,7 +54,7 @@ io.on("connection", (socket: Socket) => {
     });
 
     // someone left
-    socket.on("user:user_disconnecting", (roomId) => {
+    socket.on("user:user_disconnecting", roomId => {
         const id = socket.id;
         socket.leave(roomId);
         console.log(`${socket.data.name} left ${roomId}`);
@@ -86,7 +93,7 @@ io.on("connection", (socket: Socket) => {
     // when user is disconnected
     socket.on("disconnecting", () => {
         console.log(`disconnecting ${socket.id}`);
-        socket.rooms.forEach((roomId) => {
+        socket.rooms.forEach(roomId => {
             if (roomId === socket.id) return;
             io.to(roomId).emit(
                 "server:somebody_is_leaving",
@@ -99,7 +106,7 @@ io.on("connection", (socket: Socket) => {
 
 async function closeSocketsNotInRoom() {
     const sockets = await io.fetchSockets();
-    sockets.forEach((socket) => {
+    sockets.forEach(socket => {
         if (socket.rooms.size <= 1) {
             // console.log(`closing socket ${socket.id} not in a room`);
             socket.disconnect(true);

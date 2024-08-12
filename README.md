@@ -6,6 +6,7 @@ This is a simple video call and chat application using **WebRTC** and **Socket.i
 
 -   WebRTC
 -   Socket.io
+-   Next.js
 -   Node.js
 -   Express
 -   pnpm
