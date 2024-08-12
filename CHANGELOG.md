@@ -1,0 +1,1 @@
+- [shirshen (shirshen)](https://github.com/shirshen): chore: add permissions to workflow [#793cf37](https://github.com/shu-vro/video-audio-chat/commit/793cf37bd84a991ffa6b325b645d7a34c0816694)
