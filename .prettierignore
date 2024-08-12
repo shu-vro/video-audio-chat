@@ -1,1 +1,3 @@
 **/package*.json
+**/tsconfig*.json
+**/*.yml
