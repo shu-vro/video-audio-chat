@@ -1,15 +1,17 @@
 import express from "express";
-// import { ExpressPeerServer } from "peer";
 const app = express();
-
+import dotenv from "dotenv";
 import { createServer } from "http";
 import { Server, Socket } from "socket.io";
 import { instrument } from "@socket.io/admin-ui";
+
+dotenv.config({ path: [".env", ".env.local"] });
 
 const httpServer = createServer(app);
 
 const _printFn = console.log;
 console.log = function (...args: any) {
+    if (process.env.NODE_ENV === "production") return;
     _printFn(`[server]:[${new Date().toLocaleTimeString()}]:`, ...args);
 };
 
@@ -19,7 +21,10 @@ console.log = function (...args: any) {
 
 const io = new Server(httpServer, {
     cors: {
-        origin: ["https://admin.socket.io", "http://localhost:3000"],
+        origin: [
+            process.env.NODE_ENV === "development" && "https://admin.socket.io",
+            process.env.CLIENT_URL || "*",
+        ],
         credentials: true,
     },
     // options
@@ -54,7 +59,7 @@ io.on("connection", (socket: Socket) => {
     });
 
     // someone left
-    socket.on("user:user_disconnecting", roomId => {
+    socket.on("user:user_disconnecting", (roomId) => {
         const id = socket.id;
         socket.leave(roomId);
         console.log(`${socket.data.name} left ${roomId}`);
@@ -93,7 +98,7 @@ io.on("connection", (socket: Socket) => {
     // when user is disconnected
     socket.on("disconnecting", () => {
         console.log(`disconnecting ${socket.id}`);
-        socket.rooms.forEach(roomId => {
+        socket.rooms.forEach((roomId) => {
             if (roomId === socket.id) return;
             io.to(roomId).emit(
                 "server:somebody_is_leaving",
@@ -106,7 +111,7 @@ io.on("connection", (socket: Socket) => {
 
 async function closeSocketsNotInRoom() {
     const sockets = await io.fetchSockets();
-    sockets.forEach(socket => {
+    sockets.forEach((socket) => {
         if (socket.rooms.size <= 1) {
             // console.log(`closing socket ${socket.id} not in a room`);
             socket.disconnect(true);
@@ -118,5 +123,7 @@ setInterval(closeSocketsNotInRoom, 1000 * 20);
 
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
-    console.log(`http server running on http://localhost:${PORT}`);
+    console.log(
+        `http server running on http://localhost:${PORT} at client ${process.env.CLIENT_URL}`
+    );
 });
