@@ -1,11 +1,11 @@
 import express from "express";
 const app = express();
-import dotenv from "dotenv";
+// import dotenv from "dotenv";
 import { createServer } from "http";
 import { Server, Socket } from "socket.io";
 import { instrument } from "@socket.io/admin-ui";
 
-dotenv.config({ path: [".env", ".env.local"] });
+// dotenv.config({ path: [".env", ".env.local"] });
 
 const httpServer = createServer(app);
 
@@ -15,10 +15,6 @@ console.log = function (...args: any) {
     _printFn(`[server]:[${new Date().toLocaleTimeString()}]:`, ...args);
 };
 
-// ---------------- peerJs setup --------------------
-// const peerServer = ExpressPeerServer(httpServer, {});
-// app.use("/peer_backend", peerServer);
-
 const io = new Server(httpServer, {
     cors: {
         origin: [
@@ -27,7 +23,6 @@ const io = new Server(httpServer, {
         ],
         credentials: true,
     },
-    // options
 });
 
 instrument(io, {
@@ -36,7 +31,7 @@ instrument(io, {
 });
 
 io.on("connection", (socket: Socket) => {
-    // console.log("new connection: ", socket.id);
+    console.log("new connection: ", socket.id);
 
     socket.data.name = "unknown";
 
@@ -52,7 +47,7 @@ io.on("connection", (socket: Socket) => {
         socket.join(roomId);
 
         socket.data.name = joiner_name;
-        // console.log(`${joiner_name} joining ${roomId}`);
+        console.log(`${joiner_name} joining ${roomId}`);
         socket
             .to(roomId)
             .emit("server:someone-joined", roomId, socketId, joiner_name);
@@ -82,7 +77,6 @@ io.on("connection", (socket: Socket) => {
     );
 
     socket.on("get ready for call", (remoteId, callerId, callerName) => {
-        // payload.to => the new user
         io.to(remoteId).emit("create new peer", callerId, callerName);
     });
     socket.on("offer", (offer, remoteId) => {
@@ -124,6 +118,6 @@ setInterval(closeSocketsNotInRoom, 1000 * 20);
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
     console.log(
-        `http server running on http://localhost:${PORT} at client ${process.env.CLIENT_URL}`
+        `http server running on http://localhost:${PORT} for client ${process.env.CLIENT_URL}`
     );
 });

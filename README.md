@@ -9,12 +9,12 @@ This is a simple video call and chat application using **WebRTC** and **Socket.i
 -   Next.js
 -   Node.js
 -   Express
--   pnpm
+-   bun runtime
 
 ## Prerequisites
 
 -   Node.js (v14 or higher)
--   pnpm (v6 or higher)
+-   bun runtime (1.1.0 or higher)
 
 ## How To Develop
 
@@ -23,37 +23,46 @@ This is a simple video call and chat application using **WebRTC** and **Socket.i
     https://github.com/shu-vro/video-audio-chat.git
     cd video-audio-chat
     ```
-2. Install the dependencies. **NB:** this project used pnpm as the package manager.
+2. Install the dependencies. **NB:** this project used bun as the package manager.
     ```bash
     cd server
-    pnpm install
+    bun i
     cd ../client
-    pnpm install
+    bun i
     ```
-3. Make a file named `.env` in the client directory and add the following:
+3. Make a file named `.env.local` in the client directory and add the following:
     ```env
-    REACT_APP_SERVER_URL=http://localhost:3001
+    NEXT_PUBLIC_SERVER_URL=http://localhost:3001
     ```
-4. Start the server
+4. Make a file named `.env.local` in the server directory and add the following:
+    ```env
+    CLIENT_URL=http://localhost:3000
+    NODE_ENV="development"`
+    ```
+5. Start the server
 
     ```bash
     cd server
-    pnpm run dev # or pnpm start if don't want to use nodemon
+    bun run dev # or bun start if don't want to use nodemon
 
     # Then create a new terminal and navigate to the client directory
     cd client
-    pnpm run dev
+    bun run dev
     ```
 
-    In case You want to see the production build, you can run the following command:
+    In case You want to see the production build, you can run the following commands:
 
     ```bash
+    cd server
+    bun run start
+
+    # Then create a new terminal and navigate to the client directory
     cd client
-    pnpm run build
-    pnpm run start
+    bun run build
+    bun run start
     ```
 
-5. Open your browser and navigate to `http://localhost:3000`
+6. Open your browser and navigate to `http://localhost:3000`
 
 ## Troubleshooting
 

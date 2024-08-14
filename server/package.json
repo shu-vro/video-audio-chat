@@ -4,8 +4,8 @@
     "description": "",
     "main": "server.ts",
     "scripts": {
-        "server": "ts-node .",
-        "start": "node server.js",
+        "server": "bun .",
+        "start": "bun server.js",
         "dev": "nodemon server.ts",
         "build": "tsc"
     },
