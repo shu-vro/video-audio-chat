@@ -102,6 +102,7 @@ export default function VideoPanel({
                 <div className="relative w-[calc(50%-12px)] h-1/2 border border-primary">
                     <video
                         src=""
+                        muted
                         className="w-full h-full"
                         style={{
                             transform: "rotateY(180deg)",
