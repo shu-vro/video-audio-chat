@@ -1,3 +1,4 @@
+- [#6916edd](https://github.com/shu-vro/video-audio-chat/commit/6916edd4f135d3e749414cd8a4f5ad047b06d534): ci: deploy ready
 - [#2dd56da](https://github.com/shu-vro/video-audio-chat/commit/2dd56dadeab0af942e15406aecf5c56e82e12ce4): Create make-changelog.yml
 - [#88c48ee](https://github.com/shu-vro/video-audio-chat/commit/88c48ee7a835f2134cf0aed919e3f8eba2f8daab): Delete .github directory
 - [#b72c576](https://github.com/shu-vro/video-audio-chat/commit/b72c576a936076896c6024aa0240f047bd40d76c): chore: fetch all commit history
